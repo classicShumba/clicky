@@ -673,7 +673,21 @@ final class CompanionManager: ObservableObject {
                         y: appKitY + displayFrame.origin.y
                     )
 
-                    detectedElementScreenLocation = globalLocation
+                    // Claude's coordinates come from a downscaled screenshot, so they
+                    // often land a few points beside small controls. Snap to the
+                    // nearest real button/field from the Accessibility tree when one
+                    // is close; otherwise keep Claude's original point.
+                    var finalPointingLocation = globalLocation
+                    if let snappedElement = await AccessibilityElementSnapper.findNearestInteractiveElement(
+                        nearAppKitGlobalPoint: globalLocation
+                    ), displayFrame.contains(snappedElement.elementCenterInAppKitGlobalCoordinates) {
+                        finalPointingLocation = snappedElement.elementCenterInAppKitGlobalCoordinates
+                        print("🧲 Snapped pointer to \(snappedElement.elementRole) \"\(snappedElement.elementTitle ?? "untitled")\" (\(Int(snappedElement.distanceFromRequestedPointInPoints))pt away)")
+                    }
+
+                    guard !Task.isCancelled else { return }
+
+                    detectedElementScreenLocation = finalPointingLocation
                     detectedElementDisplayFrame = displayFrame
                     ClickyAnalytics.trackElementPointed(elementLabel: parseResult.elementLabel)
                     print("🎯 Element pointing: (\(Int(pointCoordinate.x)), \(Int(pointCoordinate.y))) → \"\(parseResult.elementLabel ?? "element")\"")

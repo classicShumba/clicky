@@ -52,7 +52,7 @@ enum BuddyTranscriptionProviderFactory {
         let openAIProvider = OpenAIAudioTranscriptionProvider()
 
         if preferredProvider == .appleSpeech {
-            return AppleSpeechTranscriptionProvider()
+            return makeBestAppleOnDeviceProvider()
         }
 
         if preferredProvider == .assemblyAI {
@@ -67,8 +67,8 @@ enum BuddyTranscriptionProviderFactory {
                 return openAIProvider
             }
 
-            print("⚠️ Transcription: using Apple Speech as fallback")
-            return AppleSpeechTranscriptionProvider()
+            print("⚠️ Transcription: using on-device Apple speech as fallback")
+            return makeBestAppleOnDeviceProvider()
         }
 
         if preferredProvider == .openAI {
@@ -83,8 +83,8 @@ enum BuddyTranscriptionProviderFactory {
                 return assemblyAIProvider
             }
 
-            print("⚠️ Transcription: using Apple Speech as fallback")
-            return AppleSpeechTranscriptionProvider()
+            print("⚠️ Transcription: using on-device Apple speech as fallback")
+            return makeBestAppleOnDeviceProvider()
         }
 
         if assemblyAIProvider.isConfigured {
@@ -94,6 +94,19 @@ enum BuddyTranscriptionProviderFactory {
         if openAIProvider.isConfigured {
             return openAIProvider
         }
+
+        return makeBestAppleOnDeviceProvider()
+    }
+
+    /// Prefers the modern on-device SpeechAnalyzer (macOS 26+) and falls back
+    /// to the older SFSpeechRecognizer-based provider on earlier systems or
+    /// when the app was built with an SDK that doesn't include SpeechAnalyzer.
+    private static func makeBestAppleOnDeviceProvider() -> any BuddyTranscriptionProvider {
+        #if compiler(>=6.2)
+        if #available(macOS 26.0, *) {
+            return AppleSpeechAnalyzerTranscriptionProvider()
+        }
+        #endif
 
         return AppleSpeechTranscriptionProvider()
     }
